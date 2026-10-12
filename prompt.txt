@@ -1,0 +1,67 @@
+# Configuration GitHub Actions pour compiler une application Flutter sur android
+
+## Contexte
+Je viens de créer une nouvelle application Flutter. Je veux mettre en place GitHub Actions pour compiler automatiquement l'application surAndroid, à chaque push sur main.
+
+## Objectif
+Créer un workflow GitHub Actions qui :
+2. Compile l'application Android (APK split par architecture)
+
+
+
+
+## Workflow GitHub Actions complet à créer
+
+Créer le fichier .github/workflows/build-all.yml avec 3 jobs en parallèle :
+
+### Job 1 — Build Web
+- runs-on: ubuntu-latest
+- timeout-minutes: 20
+- Steps : checkout, setup Flutter, flutter pub get, flutter build web --release
+- Artifact : dossier build/web/
+
+### Job 2 — Build Android
+- runs-on: ubuntu-latest
+- timeout-minutes: 30
+- Steps : checkout, setup Flutter, setup Java 17, flutter pub get, flutter build apk --release --split-per-abi
+- Artifact : dossier build/app/outputs/flutter-apk/
+- Important : ajouter android/gradle.properties avec :
+    org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g
+    org.gradle.daemon=false
+    org.gradle.parallel=true
+    android.useAndroidX=true
+    android.enableJetifier=true
+
+### Job 3 — Build Windows
+- runs-on: windows-latest
+- timeout-minutes: 30
+- Steps : checkout, setup Flutter, flutter config --enable-windows-desktop, flutter pub get, flutter build windows --release
+- Artifact : dossier build/windows/x64/runner/Release/
+
+## Configuration Flutter
+- Version : dernière stable (ou préciser la version souhaitée)
+- Channel : stable
+- Cache activé pour accélérer les builds
+
+## Déclencheurs
+- push sur main (uniquement si les fichiers lib/, pubspec.yaml ou .github/workflows changent)
+- workflow_dispatch (pour lancer manuellement)
+
+## Résultat attendu
+Après chaque push sur main :
+1. Les 3 jobs tournent en parallèle
+2. Les artifacts sont téléchargeables depuis l'onglet Actions de GitHub
+3. Chaque artifact contient les fichiers prêts à distribuer
+
+## Points d'attention
+- Le build Android peut échouer avec OutOfMemoryError si gradle.properties n'est pas configuré
+- Le build Windows nécessite le dossier windows/ (créer avec `flutter create --platforms=windows .` si absent)
+- Pour un installateur Windows .exe, ajouter une étape Inno Setup (optionnel)
+- Pour un App Bundle Play Store, utiliser `flutter build appbundle` à la place de `flutter build apk`
+
+seulement sur android 
+
+## Contraintes
+- Le workflow doit être idempotent (peut être relancé plusieurs fois)
+- Ne pas dépasser 30 minutes par job
+- Utiliser les actions officielles à jour (actions/checkout@v4, actions/upload-artifact@v4, subosito/flutter-action@v2)
