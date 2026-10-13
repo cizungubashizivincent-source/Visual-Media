@@ -41,6 +41,9 @@ jobs:
       - name: Build APK (split per ABI)
         run: flutter build apk --release --split-per-abi
 
+      - name: Build APK universal (toutes architectures)
+        run: flutter build apk --release
+
       - name: Upload APK artifacts
         uses: actions/upload-artifact@v4
         with:
